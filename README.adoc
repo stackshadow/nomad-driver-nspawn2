@@ -1,0 +1,14 @@
+= systemd-nspawn nomad driver
+
+This dirver is inspired by the community-driver nspawn, but its not ready yet !
+
+== Why this exist
+
+- it works on my nixos-system
+- dbus not neccessary, it just use cli-tools
+- support for sudo, easyer for me to develop locally ( not running my ide as root... )
+- to learn nomad driver development :)
+
+== Tested systems
+
+systemd 258
