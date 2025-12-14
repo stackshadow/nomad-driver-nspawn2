@@ -1,10 +1,16 @@
-# Copyright IBM Corp. 2019, 2025
-# SPDX-License-Identifier: MPL-2.0
+#log_level = "INFO"
+log_level = "DEBUG"
 
-log_level = "TRACE"
+ports {
+  http = 4656
+  rpc  = 4657
+  serf = 4658
+}
 
-plugin "hello-driver" {
+plugin "nspawn2" {
   config {
-    shell = "bash"
+    sudo = "true"
+    nspawn_path = "/run/current-system/systemd/bin/systemd-nspawn"
+    ip_path = "/nix/store/49av73h3l9rabx0jrac5hcsf1h3x5y6s-iproute2-6.17.0/bin/ip"
   }
 }
