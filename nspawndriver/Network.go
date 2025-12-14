@@ -85,6 +85,3 @@ func (d *NSpawnDriverPlugin) NetworkAddRoute(ifaceName string, ip string) error 
 
 	return nil
 }
-
-// sudo ip link set ve-test-driver up
-// sudo ip route add 169.254.206.189 dev ve-test-driver

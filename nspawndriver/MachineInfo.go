@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os/exec"
 	"strings"
 	"time"
 )
 
 type MachineInfo struct {
-	Name      string   `json:"machine"`
 	OS        string   `json:"os"`
 	Class     string   `json:"class"`
 	Service   string   `json:"service"`
@@ -29,9 +29,11 @@ type MachineInfoRaw struct {
 	Addresses string `json:"Addresses"`
 }
 
-type MachineList []MachineInfo
+type MachineList map[string]MachineInfo
 
 func ListMachines() (machines MachineList, err error) {
+	machines = make(MachineList)
+
 	cmd := exec.Command("machinectl", "-o", "json", "--no-pager", "list")
 
 	var stdout, stderr bytes.Buffer
@@ -49,14 +51,13 @@ func ListMachines() (machines MachineList, err error) {
 
 	// convert
 	for _, machine := range machinesRaw {
-		machines = append(machines, MachineInfo{
-			Name:      machine.Name,
+		machines[machine.Name] = MachineInfo{
 			OS:        machine.OS,
 			Class:     machine.Class,
 			Service:   machine.Service,
 			Version:   machine.Version,
 			Addresses: strings.Split(machine.Addresses, "\n"),
-		})
+		}
 	}
 
 	return machines, nil
@@ -137,6 +138,49 @@ waitLoop:
 
 		case <-ctx.Done():
 			err = errors.New("timeout on waiting for running-state")
+			return
+		}
+	}
+
+	return
+}
+
+func WaitForMachineIPv4(machineName string, timeout time.Duration) (ip string, err error) {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+	defer ctxCancel()
+
+	ticker := time.NewTicker(time.Second * 1)
+
+waitLoop:
+	for {
+		select {
+		case <-ticker.C:
+			var machines MachineList
+			machines, err = ListMachines()
+			if err != nil {
+				break waitLoop
+			}
+
+			currentMachine, exist := machines[machineName]
+			if exist {
+				for _, address := range currentMachine.Addresses {
+					ipAddress := net.ParseIP(address)
+					if ipAddress == nil {
+						continue
+					}
+
+					if ipAddress.To4() != nil {
+						ip = address
+					}
+				}
+			}
+
+			if ip != "" {
+				break waitLoop
+			}
+
+		case <-ctx.Done():
+			err = errors.New("timeout on waiting for ip")
 			return
 		}
 	}

@@ -53,6 +53,32 @@ func TestDriver_Start_Fingerprint(t *testing.T) {
 	must.MapContainsKey(t, fingerprint.Attributes, "driver.nspawn.systemd_version")
 }
 
+func TestDriver_InvalidConfig(t *testing.T) {
+	ci.Parallel(t)
+
+	task := &drivers.TaskConfig{
+		ID:      uuid.Generate(),
+		Name:    "echo",
+		AllocID: uuid.Generate(),
+	}
+	taskCfg := nspawndriver.TaskConfig{
+		Image:            "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		Boot:             true,
+		Ephemeral:        true,
+		NetworkPrivate:   false,
+		NetworkVeth:      false,
+		NetworkVethExtra: "ve-test-driver-with-to-long-network-name",
+	}
+	must.NoError(t, task.EncodeConcreteDriverConfig(&taskCfg))
+
+	d := driverHarness(t)
+	cleanup := d.MkAllocDir(task, false)
+	defer cleanup()
+
+	_, _, err := d.StartTask(task)
+	must.Error(t, err)
+}
+
 func TestDriver_schema(t *testing.T) {
 	logger := testlog.HCLogger(t)
 	if testing.Verbose() {

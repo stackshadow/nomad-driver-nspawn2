@@ -132,12 +132,14 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 	}
 
 	var driverConfig TaskConfig
-	if err := cfg.DecodeDriverConfig(&driverConfig); err != nil {
-		return nil, nil, fmt.Errorf("failed to decode driver config: %v", err)
+	err = cfg.DecodeDriverConfig(&driverConfig)
+	if err != nil {
+		return
 	}
 
-	if err := driverConfig.Validate(); err != nil {
-		return nil, nil, err
+	err = driverConfig.Validate()
+	if err != nil {
+		return
 	}
 
 	// update machine name
@@ -151,8 +153,8 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 	d.logger.Info("info task", "mounts", hclog.Fmt("%+v", cfg.Mounts))
 	d.logger.Info("info task", "env", hclog.Fmt("%+v", cfg.Env))
 
-	handle := drivers.NewTaskHandle(taskHandleVersion)
-	handle.Config = cfg
+	retTaskHandle = drivers.NewTaskHandle(taskHandleVersion)
+	retTaskHandle.Config = cfg
 
 	h := &taskState{
 		taskConfig:  cfg,
@@ -162,12 +164,13 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		machineName: driverConfig.MachineName,
 	}
 
-	if err := d.StartContainer(StartContainerOpts{
+	retDriverNetwork, err = d.StartContainer(StartContainerOpts{
 		taskConfig:       cfg,
 		driverTaskConfig: driverConfig,
 		handle:           h,
-	}); err != nil {
-		return nil, nil, err
+	})
+	if err != nil {
+		return
 	}
 
 	driverState := DriverState{
@@ -177,13 +180,14 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		StartedAt:      h.startedAt,
 	}
 
-	if err := handle.SetDriverState(&driverState); err != nil {
-		return nil, nil, fmt.Errorf("failed to set driver state: %v", err)
+	err = retTaskHandle.SetDriverState(&driverState)
+	if err != nil {
+		return
 	}
 
 	d.tasks.Set(cfg.ID, h)
-	//go h.run()
-	return handle, nil, nil
+
+	return
 }
 
 // RecoverTask recreates the in-memory state of a task from a TaskHandle.

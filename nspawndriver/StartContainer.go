@@ -1,7 +1,6 @@
 package nspawndriver
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,7 +16,7 @@ type StartContainerOpts struct {
 	handle           *taskState
 }
 
-func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (err error) {
+func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (driverNetwork *drivers.DriverNetwork, err error) {
 
 	executorConfig := &executor.ExecutorConfig{
 		LogFile:  filepath.Join(opts.taskConfig.TaskDir().Dir, "executor.out"),
@@ -26,12 +25,12 @@ func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (err error)
 
 	exec, pluginClient, err := executor.CreateExecutor(d.logger, d.nomadConfig, executorConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create executor: %v", err)
+		return
 	}
 
 	systemdParameter, err := opts.driverTaskConfig.ToCLIParameter()
 	if err != nil {
-		return fmt.Errorf("failed to create cli parameter: %v", err)
+		return
 	}
 
 	cmd := d.config.NSPawnPath
@@ -58,7 +57,7 @@ func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (err error)
 		}
 	}()
 	if err != nil {
-		return fmt.Errorf("failed to launch command with executor: %v", err)
+		return
 	}
 
 	// wait for ready
@@ -69,7 +68,7 @@ func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (err error)
 		}
 	}()
 	if err != nil {
-		return fmt.Errorf("failed to launch command with executor: %v", err)
+		return
 	}
 
 	// wait for veth
@@ -77,13 +76,26 @@ func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (err error)
 		d.logger.Info("wait for interface", "interface", opts.driverTaskConfig.NetworkVethExtra)
 		err = NetworkWaitForInterface(opts.driverTaskConfig.NetworkVethExtra, time.Second*15, time.Second)
 		if err != nil {
-			return err
+			return
 		}
 
 		d.logger.Info("try to bring up interface", "interface", opts.driverTaskConfig.NetworkVethExtra)
 		err = d.NetworkInterfaceUp(opts.driverTaskConfig.NetworkVethExtra)
 		if err != nil {
-			return err
+			return
+		}
+	}
+
+	// wait for IP-Adress
+
+	if opts.driverTaskConfig.NetworkVeth || opts.driverTaskConfig.NetworkVethExtra != "" ||
+		opts.driverTaskConfig.NetworkBridge != "" {
+
+		driverNetwork = &drivers.DriverNetwork{}
+
+		driverNetwork.IP, err = WaitForMachineIPv4(opts.driverTaskConfig.MachineName, time.Second*15)
+		if err != nil {
+			return
 		}
 	}
 
@@ -91,5 +103,5 @@ func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (err error)
 	opts.handle.pluginClient = pluginClient
 	opts.handle.pid = ps.Pid
 
-	return nil
+	return
 }
