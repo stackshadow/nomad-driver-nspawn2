@@ -61,7 +61,7 @@ func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (driverNetw
 	}
 
 	// wait for ready
-	_, err = WaitForMachineRunning(opts.driverTaskConfig.MachineName, time.Second*30)
+	_, err = MachineWaitForRunning(opts.driverTaskConfig.MachineName, time.Second*30)
 	defer func() {
 		if err != nil {
 			exec.Shutdown("", time.Second*30)
@@ -93,7 +93,7 @@ func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (driverNetw
 
 		driverNetwork = &drivers.DriverNetwork{}
 
-		driverNetwork.IP, err = WaitForMachineIPv4(opts.driverTaskConfig.MachineName, time.Second*15)
+		driverNetwork.IP, err = MachineWaitForIPv4(opts.driverTaskConfig.MachineName, time.Second*15)
 		if err != nil {
 			return
 		}

@@ -31,7 +31,7 @@ type MachineInfoRaw struct {
 
 type MachineList map[string]MachineInfo
 
-func ListMachines() (machines MachineList, err error) {
+func Machines() (machines MachineList, err error) {
 	machines = make(MachineList)
 
 	cmd := exec.Command("machinectl", "-o", "json", "--no-pager", "list")
@@ -116,7 +116,7 @@ func MachineStateFromName(machineName string) (props MachineState, err error) {
 	return
 }
 
-func WaitForMachineRunning(machineName string, timeout time.Duration) (state MachineState, err error) {
+func MachineWaitForRunning(machineName string, timeout time.Duration) (state MachineState, err error) {
 
 	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
 	defer ctxCancel()
@@ -145,7 +145,7 @@ waitLoop:
 	return
 }
 
-func WaitForMachineIPv4(machineName string, timeout time.Duration) (ip string, err error) {
+func MachineWaitForIPv4(machineName string, timeout time.Duration) (ip string, err error) {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
 	defer ctxCancel()
 
@@ -156,7 +156,7 @@ waitLoop:
 		select {
 		case <-ticker.C:
 			var machines MachineList
-			machines, err = ListMachines()
+			machines, err = Machines()
 			if err != nil {
 				break waitLoop
 			}
