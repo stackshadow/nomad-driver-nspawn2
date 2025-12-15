@@ -50,7 +50,7 @@ func TestDriver_Start_Fingerprint(t *testing.T) {
 	fingerprint := <-fingerprintChannel
 	must.NoError(t, fingerprint.Err)
 
-	must.MapContainsKey(t, fingerprint.Attributes, "driver.nspawn.systemd_version")
+	must.MapContainsKey(t, fingerprint.Attributes, "driver.nspawn2.systemd_version")
 }
 
 func TestDriver_InvalidConfig(t *testing.T) {

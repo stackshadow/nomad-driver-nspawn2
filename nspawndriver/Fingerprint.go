@@ -2,6 +2,7 @@ package nspawndriver
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 	"regexp"
 	"time"
@@ -64,19 +65,30 @@ func (d *NSpawnDriverPlugin) buildFingerprint() *drivers.Fingerprint {
 	// In the example below we check if the shell specified by the user exists
 	// in the node.
 
-	cmd := exec.Command("which", "systemd-nspawn")
+	cmd := exec.Command("whereis", "--version")
 	if err := cmd.Run(); err != nil {
 		return &drivers.Fingerprint{
 			Health:            drivers.HealthStateUndetected,
-			HealthDescription: "systemd not found",
+			HealthDescription: "whereis not found",
+			Err:               errors.New("whereis not found"),
 		}
 	}
 
-	cmd = exec.Command("which", "machinectl")
+	cmd = exec.Command("whereis", "systemd-nspawn")
 	if err := cmd.Run(); err != nil {
 		return &drivers.Fingerprint{
 			Health:            drivers.HealthStateUndetected,
-			HealthDescription: "systemd not found",
+			HealthDescription: "systemd-nspawn not found",
+			Err:               errors.New("systemd-nspawn not found"),
+		}
+	}
+
+	cmd = exec.Command("whereis", "machinectl")
+	if err := cmd.Run(); err != nil {
+		return &drivers.Fingerprint{
+			Health:            drivers.HealthStateUndetected,
+			HealthDescription: "machinectl not found",
+			Err:               errors.New("machinectl not found"),
 		}
 	}
 
