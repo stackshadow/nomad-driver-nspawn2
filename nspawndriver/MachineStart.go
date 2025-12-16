@@ -1,73 +1,50 @@
 package nspawndriver
 
 import (
-	"path/filepath"
-	"strings"
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/nomad/drivers/shared/executor"
 	"github.com/hashicorp/nomad/plugins/drivers"
 )
 
-type StartContainerOpts struct {
+type MachineStartOpts struct {
 	taskConfig       *drivers.TaskConfig
 	driverTaskConfig TaskConfig
 	handle           *taskState
 }
 
-func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (driverNetwork *drivers.DriverNetwork, err error) {
-
-	executorConfig := &executor.ExecutorConfig{
-		LogFile:  filepath.Join(opts.taskConfig.TaskDir().Dir, "executor.out"),
-		LogLevel: "debug",
-	}
-
-	exec, pluginClient, err := executor.CreateExecutor(d.logger, d.nomadConfig, executorConfig)
-	if err != nil {
-		return
-	}
+func (d *NSpawnDriverPlugin) MachineStart(opts MachineStartOpts) (driverNetwork *drivers.DriverNetwork, err error) {
 
 	systemdParameter, err := opts.driverTaskConfig.ToCLIParameter()
 	if err != nil {
 		return
 	}
 
-	cmd := d.config.NSPawnPath
-	args := systemdParameter
+	cmds := []string{d.config.NSPawnPath}
+	cmds = append(cmds, systemdParameter...)
 
-	if d.config.Sudo {
-		cmd = "bash"
-		args = []string{"-c"}
-		args = append(args, "sudo "+d.config.NSPawnPath+" "+strings.Join(systemdParameter, " "))
-	}
-	d.logger.Info("exec systemd-nspawn", "args", hclog.Fmt("%s %+v", cmd, args))
+	d.logger.Info("exec systemd-nspawn", "cmds", hclog.Fmt("%+v", cmds))
 
-	execCmd := &executor.ExecCommand{
-		Cmd:        cmd,
-		Args:       args,
-		StdoutPath: opts.taskConfig.StdoutPath,
-		StderrPath: opts.taskConfig.StderrPath,
-	}
+	var cmder *Commander
+	cmder, err = NewCommander(ExecBackgroundWithFIFOOpts{
+		Commands:       cmds,
+		StdErrFifoPath: opts.taskConfig.StderrPath,
+		StdOuFifooPath: opts.taskConfig.StdoutPath,
+		UseSudo:        d.config.Sudo,
+	})
+	defer cmder.Destroy()
 
-	ps, err := exec.Launch(execCmd)
-	defer func() {
-		if err != nil {
-			pluginClient.Kill()
-		}
-	}()
 	if err != nil {
+		err = fmt.Errorf("error on exec: %v", err)
 		return
 	}
+	// cmder.Stop()
 
 	// wait for ready
 	_, err = MachineWaitForRunning(opts.driverTaskConfig.MachineName, time.Second*30)
-	defer func() {
-		if err != nil {
-			exec.Shutdown("", time.Second*30)
-		}
-	}()
 	if err != nil {
+		err = fmt.Errorf("error on wait for running: %v", err)
 		return
 	}
 
@@ -76,18 +53,19 @@ func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (driverNetw
 		d.logger.Info("wait for interface", "interface", opts.driverTaskConfig.NetworkVethExtra)
 		err = NetworkWaitForInterface(opts.driverTaskConfig.NetworkVethExtra, time.Second*15, time.Second)
 		if err != nil {
+			err = fmt.Errorf("error on wait for interface: %v", err)
 			return
 		}
 
 		d.logger.Info("try to bring up interface", "interface", opts.driverTaskConfig.NetworkVethExtra)
 		err = d.NetworkInterfaceUp(opts.driverTaskConfig.NetworkVethExtra)
 		if err != nil {
+			err = fmt.Errorf("error on wait for interface up: %v", err)
 			return
 		}
 	}
 
 	// wait for IP-Adress
-
 	if opts.driverTaskConfig.NetworkVeth || opts.driverTaskConfig.NetworkVethExtra != "" ||
 		opts.driverTaskConfig.NetworkBridge != "" {
 
@@ -95,13 +73,10 @@ func (d *NSpawnDriverPlugin) StartContainer(opts StartContainerOpts) (driverNetw
 
 		driverNetwork.IP, err = MachineWaitForIPv4(opts.driverTaskConfig.MachineName, time.Second*15)
 		if err != nil {
+			err = fmt.Errorf("error on wait for ipv4: %v", err)
 			return
 		}
 	}
-
-	opts.handle.exec = exec
-	opts.handle.pluginClient = pluginClient
-	opts.handle.pid = ps.Pid
 
 	return
 }

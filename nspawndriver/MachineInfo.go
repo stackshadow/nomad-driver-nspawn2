@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -34,19 +33,25 @@ type MachineList map[string]MachineInfo
 func Machines() (machines MachineList, err error) {
 	machines = make(MachineList)
 
-	cmd := exec.Command("machinectl", "-o", "json", "--no-pager", "list")
-
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
 
-	if err = cmd.Run(); err != nil {
-		return nil, fmt.Errorf("machinectl failed: %w (stderr: %s)", err, stderr.String())
+	cmder, err := NewCommander(ExecBackgroundWithFIFOOpts{
+		Commands:     []string{"machinectl", "-o", "json", "--no-pager", "list"},
+		StdOutBuffer: &stdout,
+		StdErrBuffer: &stderr,
+	})
+	defer cmder.Destroy()
+
+	if err != nil {
+		err = fmt.Errorf("error call list of machines: %w", err)
+		return
 	}
+	cmder.Stop()
 
 	var machinesRaw []MachineInfoRaw
 	if err = json.Unmarshal(stdout.Bytes(), &machinesRaw); err != nil {
-		return nil, fmt.Errorf("JSON parse failed: %w", err)
+		err = fmt.Errorf("JSON parse failed: %w", err)
+		return
 	}
 
 	// convert
@@ -60,7 +65,7 @@ func Machines() (machines MachineList, err error) {
 		}
 	}
 
-	return machines, nil
+	return
 }
 
 type MachineState struct {
@@ -71,22 +76,24 @@ type MachineState struct {
 
 func MachineStateFromName(machineName string) (props MachineState, err error) {
 	// machinectl show gibt key=value Zeilen, kein JSON direkt
-	cmd := exec.Command("machinectl", "show", machineName)
 
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if err = cmd.Run(); err != nil {
-		// err = fmt.Errorf("machinectl show %s failed: %w (stderr: %s)", machineName, err, stderr.String())
-		err = nil
+	cmder, err := NewCommander(ExecBackgroundWithFIFOOpts{
+		Commands:     []string{"machinectl", "--all", "show", machineName},
+		StdOutBuffer: &stdout,
+		StdErrBuffer: &stderr,
+	})
+	defer cmder.Destroy()
+	if err != nil {
+		err = fmt.Errorf("error call list of machines: %w", err)
 		return
 	}
+	cmder.Stop()
 
 	// Parst key=value Format zu map
-	propsMap := make(map[string]interface{})
-	lines := strings.Split(stdout.String(), "\n")
-	for _, line := range lines {
+	propsMap := make(map[string]any)
+	lines := strings.SplitSeq(stdout.String(), "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || !strings.Contains(line, "=") {
 			continue
@@ -127,6 +134,14 @@ waitLoop:
 	for {
 		select {
 		case <-ticker.C:
+
+			var machineList MachineList
+			machineList, err = Machines()
+			_, machineExist := machineList[machineName]
+			if !machineExist {
+				continue
+			}
+
 			state, err = MachineStateFromName(machineName)
 			if err != nil {
 				break waitLoop
@@ -143,6 +158,56 @@ waitLoop:
 	}
 
 	return
+}
+
+func MachineWaitForStopping(machineName string, timeout time.Duration) (err error) {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+	defer ctxCancel()
+
+	ticker := time.NewTicker(time.Second * 1)
+	defer ticker.Stop()
+
+	// check that the machine is running
+	machineList, err := Machines()
+	_, machineExist := machineList[machineName]
+	if !machineExist {
+		return
+	}
+
+	stopCheckLoop := make(chan bool)
+	defer func() {
+		stopCheckLoop <- true
+		close(stopCheckLoop)
+	}()
+	machineStopped := make(chan bool)
+	defer close(machineStopped)
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				machineList, _ := Machines()
+				_, machineExist := machineList[machineName]
+				if !machineExist {
+					machineStopped <- true
+				}
+
+			case <-stopCheckLoop:
+				return
+			}
+		}
+	}()
+
+	for {
+		select {
+		case <-machineStopped:
+			return
+
+		case <-ctx.Done():
+			err = errors.New("timeout on waiting for running-state")
+			return
+		}
+	}
 }
 
 func MachineWaitForIPv4(machineName string, timeout time.Duration) (ip string, err error) {

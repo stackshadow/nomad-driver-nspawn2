@@ -95,7 +95,7 @@ func TestDriver_schema(t *testing.T) {
 	validHCL := `
 	config {
 		sudo = true
-		nspawnpath = "" # default
+		nspawn_path = "" # default
 	}
   `
 	var tc nspawndriver.DriverConfig
@@ -147,7 +147,7 @@ func TestDriver_Start_network(t *testing.T) {
 	ci.Parallel(t)
 
 	task := &drivers.TaskConfig{
-		ID:      uuid.Generate(),
+		ID:      "nsdriver-integrationtest-2",
 		Name:    "echo",
 		AllocID: uuid.Generate(),
 	}
@@ -178,5 +178,28 @@ func TestDriver_Start_network(t *testing.T) {
 		err = d.DestroyTask(task.ID, true)
 		must.NoError(t, err)
 	}()
+
+}
+func TestDriver_Stop(t *testing.T) {
+	ci.Parallel(t)
+
+	task := &drivers.TaskConfig{
+		ID:      uuid.Generate(),
+		Name:    "echo",
+		AllocID: uuid.Generate(),
+	}
+	taskCfg := nspawndriver.TaskConfig{
+		Image:            "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		Boot:             true,
+		Ephemeral:        true,
+		NetworkPrivate:   false,
+		NetworkVeth:      false,
+		NetworkVethExtra: "ve-test-driver",
+	}
+	must.NoError(t, task.EncodeConcreteDriverConfig(&taskCfg))
+
+	d := driverHarness(t)
+	cleanup := d.MkAllocDir(task, false)
+	defer cleanup()
 
 }

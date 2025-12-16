@@ -22,9 +22,10 @@ var (
 	// })
 
 	configSpec = hclspec.NewObject(map[string]*hclspec.Spec{
-		"sudo":        hclspec.NewAttr("sudo", "bool", false),
-		"nspawn_path": hclspec.NewAttr("nspawn_path", "string", false),
-		"ip_path":     hclspec.NewAttr("ip_path", "string", false),
+		"sudo":            hclspec.NewAttr("sudo", "bool", false),
+		"nspawn_path":     hclspec.NewAttr("nspawn_path", "string", false),
+		"machinectl_path": hclspec.NewAttr("machinectl_path", "string", false),
+		"ip_path":         hclspec.NewAttr("ip_path", "string", false),
 
 		// "nspawnpath": hclspec.NewDefault(
 		// 	hclspec.NewAttr("nspawnpath", "string", false),
@@ -37,7 +38,8 @@ var (
 type DriverConfig struct {
 	Sudo       bool   `codec:"sudo"`
 	NSPawnPath string `codec:"nspawn_path"` // path to systemd-nspawn
-	IPPath     string `codec:"ip_path"`     // path to ip
+	MachineCtl string `codec:"machinectl_path"`
+	IPPath     string `codec:"ip_path"` // path to ip
 }
 
 // ConfigSchema returns the plugin configuration schema.
@@ -62,7 +64,17 @@ func (d *NSpawnDriverPlugin) SetConfig(cfg *base.Config) error {
 		}
 
 		config.NSPawnPath = "systemd-nspawn"
-		d.logger.Debug("no nspawn-path set, use default", "nspawn_path", config.NSPawnPath)
+		d.logger.Debug("no nspawn_path set, use default", "nspawn_path", config.NSPawnPath)
+	}
+
+	if config.MachineCtl == "" {
+		if config.Sudo {
+			config.Sudo = false
+			d.logger.Warn("no absolut path to MachineCtl, can not use sudo")
+		}
+
+		config.MachineCtl = "machinectl"
+		d.logger.Debug("no machinectl_path set, use default", "machinectl_path", config.MachineCtl)
 	}
 
 	if config.IPPath == "" {

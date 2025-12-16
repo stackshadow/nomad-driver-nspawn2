@@ -32,6 +32,7 @@ func driverHarness(t *testing.T) *dtestutil.DriverHarness {
 	pluginConfig := nspawndriver.DriverConfig{
 		Sudo:       true,
 		NSPawnPath: "/run/current-system/systemd/bin/systemd-nspawn",
+		MachineCtl: "/run/current-system/systemd/bin/machinectl",
 		IPPath:     "/nix/store/49av73h3l9rabx0jrac5hcsf1h3x5y6s-iproute2-6.17.0/bin/ip",
 	}
 

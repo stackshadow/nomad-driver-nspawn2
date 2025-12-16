@@ -7,13 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/hashicorp/consul-template/signals"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/nomad/drivers/shared/eventer"
-	"github.com/hashicorp/nomad/drivers/shared/executor"
 	"github.com/hashicorp/nomad/helper/uuid"
 	"github.com/hashicorp/nomad/plugins/base"
 	"github.com/hashicorp/nomad/plugins/drivers"
@@ -164,7 +161,7 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		machineName: driverConfig.MachineName,
 	}
 
-	retDriverNetwork, err = d.StartContainer(StartContainerOpts{
+	retDriverNetwork, err = d.MachineStart(MachineStartOpts{
 		taskConfig:       cfg,
 		driverTaskConfig: driverConfig,
 		handle:           h,
@@ -174,10 +171,11 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 	}
 
 	driverState := DriverState{
-		ReattachConfig: structs.ReattachConfigFromGoPlugin(h.pluginClient.ReattachConfig()),
-		Pid:            h.pid,
-		TaskConfig:     cfg,
-		StartedAt:      h.startedAt,
+		ReattachConfig: &structs.ReattachConfig{},
+
+		TaskConfig:  cfg,
+		StartedAt:   h.startedAt,
+		MachineName: driverConfig.MachineName,
 	}
 
 	err = retTaskHandle.SetDriverState(&driverState)
@@ -210,31 +208,29 @@ func (d *NSpawnDriverPlugin) RecoverTask(handle *drivers.TaskHandle) error {
 		return fmt.Errorf("failed to decode driver config: %v", err)
 	}
 
-	// TODO: implement driver specific logic to recover a task.
-	//
-	// Recovering a task involves recreating and storing a taskState as if the
-	// task was just started.
-	//
-	// In the example below we use the executor to re-attach to the process
-	// that was created when the task first started.
+	// // TODO: implement driver specific logic to recover a task.
+	// //
+	// // Recovering a task involves recreating and storing a taskState as if the
+	// // task was just started.
+	// //
+	// // In the example below we use the executor to re-attach to the process
+	// // that was created when the task first started.
 	plugRC, err := structs.ReattachConfigToGoPlugin(driverState.ReattachConfig)
 	if err != nil {
 		return fmt.Errorf("failed to build ReattachConfig from taskConfig state: %v", err)
 	}
-
-	execImpl, pluginClient, err := executor.ReattachToExecutor(plugRC, d.logger, d.nomadConfig.Topology.Compute())
-	if err != nil {
-		return fmt.Errorf("failed to reattach to executor: %v", err)
-	}
+	_ = plugRC
 
 	h := &taskState{
-		exec:         execImpl,
-		pid:          driverState.Pid,
-		pluginClient: pluginClient,
-		taskConfig:   driverState.TaskConfig,
-		procState:    drivers.TaskStateRunning,
-		startedAt:    driverState.StartedAt,
-		exitResult:   &drivers.ExitResult{},
+		logger: d.logger,
+
+		taskConfig: driverState.TaskConfig,
+		procState:  drivers.TaskStateRunning,
+
+		machineName: driverState.MachineName,
+
+		startedAt:  driverState.StartedAt,
+		exitResult: &drivers.ExitResult{},
 	}
 
 	d.tasks.Set(driverState.TaskConfig.ID, h)
@@ -257,29 +253,8 @@ func (d *NSpawnDriverPlugin) WaitTask(ctx context.Context, taskID string) (<-cha
 
 func (d *NSpawnDriverPlugin) handleWait(ctx context.Context, handle *taskState, ch chan *drivers.ExitResult) {
 	defer close(ch)
-	var result *drivers.ExitResult
 
-	// TODO: implement driver specific logic to notify Nomad the task has been
-	// completed and what was the exit result.
-	//
-	// When a result is sent in the result channel Nomad will stop the task and
-	// emit an event that an operator can use to get an insight on why the task
-	// stopped.
-	//
-	// In the example below we block and wait until the executor finishes
-	// running, at which point we send the exit code and signal in the result
-	// channel.
-	ps, err := handle.exec.Wait(ctx)
-	if err != nil {
-		result = &drivers.ExitResult{
-			Err: fmt.Errorf("executor: error waiting on process: %v", err),
-		}
-	} else {
-		result = &drivers.ExitResult{
-			ExitCode: ps.ExitCode,
-			Signal:   ps.Signal,
-		}
-	}
+	ticker := time.NewTicker(time.Second)
 
 	for {
 		select {
@@ -287,7 +262,13 @@ func (d *NSpawnDriverPlugin) handleWait(ctx context.Context, handle *taskState, 
 			return
 		case <-d.ctx.Done():
 			return
-		case ch <- result:
+		case <-ticker.C:
+			// @TODO DONT USE THIS, USE MACHINE STATE
+			err := MachineWaitForStopping(handle.machineName, time.Second*30)
+			ch <- &drivers.ExitResult{
+				ExitCode: 0,
+				Err:      err,
+			}
 		}
 	}
 }
@@ -299,23 +280,14 @@ func (d *NSpawnDriverPlugin) StopTask(taskID string, timeout time.Duration, sign
 		return drivers.ErrTaskNotFound
 	}
 
-	// TODO: implement driver specific logic to stop a task.
-	//
-	// The StopTask function is expected to stop a running task by sending the
-	// given signal to it. If the task does not stop during the given timeout,
-	// the driver must forcefully kill the task.
-	//
-	// In the example below we let the executor handle the task shutdown
-	// process for us, but you might need to customize this for your own
-	// implementation.
-	if err := handle.exec.Shutdown(signal, timeout); err != nil {
-		if handle.pluginClient.Exited() {
-			return nil
-		}
-		return fmt.Errorf("executor Shutdown failed: %v", err)
-	}
+	// @TODO stopp with machinectl !
+	d.MachineStop(MachineStopOpts{
+		handle: handle,
+	})
 
-	return nil
+	err := MachineWaitForStopping(handle.machineName, time.Second*30)
+
+	return err
 }
 
 // DestroyTask cleans up and removes a task that has terminated.
@@ -327,22 +299,6 @@ func (d *NSpawnDriverPlugin) DestroyTask(taskID string, force bool) error {
 
 	if handle.IsRunning() && !force {
 		return errors.New("cannot destroy running task")
-	}
-
-	// TODO: implement driver specific logic to destroy a complete task.
-	//
-	// Destroying a task includes removing any resources used by task and any
-	// local references in the plugin. If force is set to true the task should
-	// be destroyed even if it's currently running.
-	//
-	// In the example below we use the executor to force shutdown the task
-	// (timeout equals 0).
-	if !handle.pluginClient.Exited() {
-		if err := handle.exec.Shutdown("", 0); err != nil {
-			handle.logger.Error("destroying executor failed", "err", err)
-		}
-
-		handle.pluginClient.Kill()
 	}
 
 	d.tasks.Delete(taskID)
@@ -365,16 +321,9 @@ func (d *NSpawnDriverPlugin) TaskStats(ctx context.Context, taskID string, inter
 	if !ok {
 		return nil, drivers.ErrTaskNotFound
 	}
+	_ = handle
 
-	// TODO: implement driver specific logic to send task stats.
-	//
-	// This function returns a channel that Nomad will use to listen for task
-	// stats (e.g., CPU and memory usage) in a given interval. It should send
-	// stats until the context is canceled or the task stops running.
-	//
-	// In the example below we use the Stats function provided by the executor,
-	// but you can build a set of functions similar to the fingerprint process.
-	return handle.exec.Stats(ctx, interval)
+	return ExecStats(ctx, interval)
 }
 
 // TaskEvents returns a channel that the plugin can use to emit task related events.
@@ -385,7 +334,7 @@ func (d *NSpawnDriverPlugin) TaskEvents(ctx context.Context) (<-chan *drivers.Ta
 // SignalTask forwards a signal to a task.
 // This is an optional capability.
 func (d *NSpawnDriverPlugin) SignalTask(taskID string, signal string) error {
-	handle, ok := d.tasks.Get(taskID)
+	_, ok := d.tasks.Get(taskID)
 	if !ok {
 		return drivers.ErrTaskNotFound
 	}
@@ -395,14 +344,14 @@ func (d *NSpawnDriverPlugin) SignalTask(taskID string, signal string) error {
 	// The given signal must be forwarded to the target taskID. If this plugin
 	// doesn't support receiving signals (capability SendSignals is set to
 	// false) you can just return nil.
-	sig := os.Interrupt
-	if s, ok := signals.SignalLookup[signal]; ok {
-		sig = s
-	} else {
-		d.logger.Warn("unknown signal to send to task, using SIGINT instead", "signal", signal, "task_id", handle.taskConfig.ID)
+	// sig := os.Interrupt
+	// if s, ok := signals.SignalLookup[signal]; ok {
+	// 	sig = s
+	// } else {
+	// 	d.logger.Warn("unknown signal to send to task, using SIGINT instead", "signal", signal, "task_id", handle.taskConfig.ID)
 
-	}
-	return handle.exec.Signal(sig)
+	// }
+	return nil
 }
 
 // ExecTask returns the result of executing the given command inside a task.

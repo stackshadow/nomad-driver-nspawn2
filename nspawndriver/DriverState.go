@@ -24,5 +24,5 @@ type DriverState struct {
 	// will respawn a new instance of the plugin and try to restore its
 	// in-memory representation of the running tasks using the RecoverTask()
 	// method below.
-	Pid int
+	MachineName string
 }
