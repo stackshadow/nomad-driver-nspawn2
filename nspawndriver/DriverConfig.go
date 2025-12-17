@@ -1,8 +1,13 @@
 package nspawndriver
 
 import (
+	"time"
+
 	"github.com/hashicorp/nomad/plugins/base"
 	"github.com/hashicorp/nomad/plugins/shared/hclspec"
+	machinemanager "github.com/stackshadow/nspawn2/pkg/MachineManager"
+	"github.com/stackshadow/nspawn2/pkg/MachineManager/service"
+	networking "github.com/stackshadow/nspawn2/pkg/Networking"
 )
 
 var (
@@ -88,6 +93,20 @@ func (d *NSpawnDriverPlugin) SetConfig(cfg *base.Config) error {
 	}
 
 	// @TODO: Check if binary paths exist
+
+	// Init the manager
+	d.manager = machinemanager.NewService(service.NewServiceOpts{
+		Repo: machinemanager.NewMachineCommandsCliBased(machinemanager.NewOpts{
+			UseSudo:           config.Sudo,
+			BinNSPawnPath:     config.NSPawnPath,
+			BinMachinectlPath: config.MachineCtl,
+		}),
+		Network: networking.NewCLIBasedPort(networking.NewOpts{
+			UseSudo:   config.Sudo,
+			BinIPPath: config.IPPath,
+		}),
+		Timeout: time.Second * 15,
+	})
 
 	// Save the configuration to the plugin
 	d.config = &config

@@ -152,12 +152,13 @@ func TestDriver_Start_network(t *testing.T) {
 		AllocID: uuid.Generate(),
 	}
 	taskCfg := nspawndriver.TaskConfig{
-		Image:            "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
-		Boot:             true,
-		Ephemeral:        true,
-		NetworkPrivate:   false,
-		NetworkVeth:      false,
-		NetworkVethExtra: "ve-test-driver",
+		Image:          "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		Boot:           true,
+		Ephemeral:      true,
+		NetworkPrivate: false,
+		NetworkVeth:    false,
+		// NetworkVethExtra: "ve-test-driver",
+		NetworkBridge: "avnet",
 	}
 	must.NoError(t, task.EncodeConcreteDriverConfig(&taskCfg))
 

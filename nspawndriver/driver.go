@@ -16,6 +16,8 @@ import (
 	"github.com/hashicorp/nomad/plugins/drivers"
 	"github.com/hashicorp/nomad/plugins/shared/hclspec"
 	"github.com/hashicorp/nomad/plugins/shared/structs"
+	"github.com/stackshadow/nspawn2/pkg/MachineManager/domain"
+	"github.com/stackshadow/nspawn2/pkg/MachineManager/service"
 )
 
 const (
@@ -76,6 +78,9 @@ type NSpawnDriverPlugin struct {
 
 	// nomadConfig is the client config from Nomad
 	nomadConfig *base.ClientDriverConfig
+
+	// the manager who takes care about systemd-machines
+	manager *service.Service
 
 	// tasks is the in memory datastore mapping taskIDs to driver handles
 	tasks *taskStates
@@ -146,9 +151,9 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		driverConfig.MachineName = uuid.Generate()
 	}
 
-	d.logger.Info("info task", "driverConfig", hclog.Fmt("%+v", driverConfig))
+	// d.logger.Info("info task", "driverConfig", hclog.Fmt("%+v", driverConfig))
 	d.logger.Info("info task", "mounts", hclog.Fmt("%+v", cfg.Mounts))
-	d.logger.Info("info task", "env", hclog.Fmt("%+v", cfg.Env))
+	// d.logger.Info("info task", "env", hclog.Fmt("%+v", cfg.Env))
 
 	retTaskHandle = drivers.NewTaskHandle(taskHandleVersion)
 	retTaskHandle.Config = cfg
@@ -161,13 +166,38 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		machineName: driverConfig.MachineName,
 	}
 
-	retDriverNetwork, err = d.MachineStart(MachineStartOpts{
-		taskConfig:       cfg,
-		driverTaskConfig: driverConfig,
-		handle:           h,
+	ipv4, ipv6, err := d.manager.MachineStart(domain.StartOpts{
+		MachineName: driverConfig.MachineName,
+		Hostname:    driverConfig.Hostname,
+
+		ImageFileName: driverConfig.Image,
+		IsSystemd:     driverConfig.Boot,
+		Ephemeral:     driverConfig.Ephemeral,
+
+		Environment: driverConfig.Environment,
+
+		Bind:         driverConfig.Bind,
+		BindReadOnly: driverConfig.BindReadOnly,
+
+		Networking: domain.StartNeworkingOpts{
+			Veth:       driverConfig.NetworkVeth,
+			VethName:   driverConfig.NetworkVethExtra,
+			BridgeName: driverConfig.NetworkBridge,
+		},
+
+		StdOutPath: cfg.StdoutPath,
+		StdErrPath: cfg.StderrPath,
 	})
 	if err != nil {
 		return
+	}
+
+	if ipv6 != "" || ipv4 != "" {
+		retDriverNetwork = &drivers.DriverNetwork{}
+		if ipv4 != "" {
+			d.logger.Info("start task found ipv4", "ipv4", ipv4)
+			retDriverNetwork.IP = ipv4
+		}
 	}
 
 	driverState := DriverState{
@@ -263,11 +293,25 @@ func (d *NSpawnDriverPlugin) handleWait(ctx context.Context, handle *taskState, 
 		case <-d.ctx.Done():
 			return
 		case <-ticker.C:
-			// @TODO DONT USE THIS, USE MACHINE STATE
-			err := MachineWaitForStopping(handle.machineName, time.Second*30)
-			ch <- &drivers.ExitResult{
-				ExitCode: 0,
-				Err:      err,
+
+			state, err := d.manager.State(handle.machineName)
+			if err != nil {
+				ch <- &drivers.ExitResult{
+					ExitCode: -1,
+					Err:      err,
+				}
+			}
+			if state == domain.MachineStateNotExist {
+				ch <- &drivers.ExitResult{
+					ExitCode: 0,
+					Err:      nil,
+				}
+			}
+			if state == domain.MachineStateStopped {
+				ch <- &drivers.ExitResult{
+					ExitCode: 0,
+					Err:      nil,
+				}
 			}
 		}
 	}
@@ -280,14 +324,22 @@ func (d *NSpawnDriverPlugin) StopTask(taskID string, timeout time.Duration, sign
 		return drivers.ErrTaskNotFound
 	}
 
-	// @TODO stopp with machinectl !
-	d.MachineStop(MachineStopOpts{
-		handle: handle,
-	})
+	d.logger.Info("try to stop machine", "machine_name", handle.machineName)
 
-	err := MachineWaitForStopping(handle.machineName, time.Second*30)
+	d.manager.Stop(handle.machineName)
 
-	return err
+	d.logger.Info("stop request, check stopped", "machine_name", handle.machineName)
+
+	err := d.manager.WaitForStopping(handle.machineName)
+	if err != nil {
+		d.logger.Error("stop task", err)
+		err = fmt.Errorf("stop task: %w", err)
+		return err
+	}
+
+	d.logger.Info("stopped", "machine_name", handle.machineName)
+
+	return nil
 }
 
 // DestroyTask cleans up and removes a task that has terminated.
@@ -296,10 +348,7 @@ func (d *NSpawnDriverPlugin) DestroyTask(taskID string, force bool) error {
 	if !ok {
 		return drivers.ErrTaskNotFound
 	}
-
-	if handle.IsRunning() && !force {
-		return errors.New("cannot destroy running task")
-	}
+	_ = handle
 
 	d.tasks.Delete(taskID)
 	return nil
@@ -323,7 +372,9 @@ func (d *NSpawnDriverPlugin) TaskStats(ctx context.Context, taskID string, inter
 	}
 	_ = handle
 
-	return ExecStats(ctx, interval)
+	resourceUsage := make(<-chan *drivers.TaskResourceUsage)
+
+	return resourceUsage, nil
 }
 
 // TaskEvents returns a channel that the plugin can use to emit task related events.

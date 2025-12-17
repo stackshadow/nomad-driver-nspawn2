@@ -45,14 +45,3 @@ func (h *taskState) TaskStatus() *drivers.TaskStatus {
 		DriverAttributes: map[string]string{},
 	}
 }
-
-func (h *taskState) IsRunning() bool {
-	h.stateLock.RLock()
-	defer h.stateLock.RUnlock()
-
-	props, err := MachineStateFromName(h.machineName)
-	if err != nil {
-		return false
-	}
-	return props.State == "running"
-}
