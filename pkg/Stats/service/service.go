@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/containerd/cgroups/v3/cgroup2"
-	"github.com/containerd/cgroups/v3/cgroup2/stats"
 	"github.com/stackshadow/nspawn2/pkg/Stats/domain"
 )
 
@@ -81,12 +80,12 @@ readLoop:
 	return
 }
 
-func ramUsagePercent(mem *stats.MemoryStat) float64 {
-	if mem.MaxUsage == 18446744073709551615 { // max uint64
-		return 0
-	}
-	return (float64(mem.Usage) / float64(mem.UsageLimit)) * 100
-}
+// func ramUsagePercent(mem *stats.MemoryStat) float64 {
+// 	if mem.MaxUsage == 18446744073709551615 { // max uint64
+// 		return 0
+// 	}
+// 	return (float64(mem.Usage) / float64(mem.UsageLimit)) * 100
+// }
 
 func cpuUsagePercent(current, prev uint64) float64 {
 	delta := current - prev

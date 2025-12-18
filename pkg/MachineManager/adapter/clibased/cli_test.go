@@ -7,10 +7,12 @@ import (
 	"github.com/shoenig/test/must"
 	"github.com/stackshadow/nspawn2/pkg/MachineManager/adapter/clibased"
 	"github.com/stackshadow/nspawn2/pkg/MachineManager/domain"
+	testutils "github.com/stackshadow/nspawn2/pkg/TestUtils"
 )
 
 func TestStartStop(t *testing.T) {
 	var err error
+	basePath := testutils.GetProjectPath("./")
 
 	adapter := clibased.New(struct {
 		BinNSPawnPath     string
@@ -24,7 +26,7 @@ func TestStartStop(t *testing.T) {
 
 	startOpts := domain.StartOpts{
 		MachineName:   "integrationtest-1",
-		ImageFileName: "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		ImageFileName: basePath + "/debian.raw",
 		IsSystemd:     true,
 		Ephemeral:     true,
 	}
@@ -49,6 +51,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestStart(t *testing.T) {
+	basePath := testutils.GetProjectPath("./")
 
 	var err error
 
@@ -64,7 +67,7 @@ func TestStart(t *testing.T) {
 
 	startOpts := domain.StartOpts{
 		MachineName:   "integrationtest-2",
-		ImageFileName: "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		ImageFileName: basePath + "/debian.raw",
 		IsSystemd:     true,
 		Ephemeral:     true,
 	}

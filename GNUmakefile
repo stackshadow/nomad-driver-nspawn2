@@ -9,3 +9,6 @@ clean: ## Remove build artifacts
 
 build:
 	go build -o ./output/${PLUGIN_BINARY} .
+
+test:
+	go test -cover ./...

@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/stackshadow/nspawn2/nspawndriver"
+	testutils "github.com/stackshadow/nspawn2/pkg/TestUtils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/nomad/ci"
@@ -34,7 +35,6 @@ var testResources = &drivers.Resources{
 }
 
 func TestDriver_Start_Fingerprint(t *testing.T) {
-
 	logger := testlog.HCLogger(t)
 	if testing.Verbose() {
 		logger.SetLevel(hclog.Trace)
@@ -55,6 +55,7 @@ func TestDriver_Start_Fingerprint(t *testing.T) {
 
 func TestDriver_InvalidConfig(t *testing.T) {
 	ci.Parallel(t)
+	basePath := testutils.GetProjectPath("./")
 
 	task := &drivers.TaskConfig{
 		ID:      uuid.Generate(),
@@ -62,7 +63,7 @@ func TestDriver_InvalidConfig(t *testing.T) {
 		AllocID: uuid.Generate(),
 	}
 	taskCfg := nspawndriver.TaskConfig{
-		Image:            "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		Image:            basePath + "/debian.raw",
 		Boot:             true,
 		Ephemeral:        true,
 		NetworkPrivate:   false,
@@ -71,7 +72,7 @@ func TestDriver_InvalidConfig(t *testing.T) {
 	}
 	must.NoError(t, task.EncodeConcreteDriverConfig(&taskCfg))
 
-	d := driverHarness(t)
+	d := testutils.DriverHarness(t)
 	cleanup := d.MkAllocDir(task, false)
 	defer cleanup()
 
@@ -111,19 +112,21 @@ func TestDriver_schema(t *testing.T) {
 func TestDriver_Start_nonetwork(t *testing.T) {
 	ci.Parallel(t)
 
+	basePath := testutils.GetProjectPath("./")
+
 	task := &drivers.TaskConfig{
 		ID:      uuid.Generate(),
 		Name:    "echo",
 		AllocID: uuid.Generate(),
 	}
 	taskCfg := nspawndriver.TaskConfig{
-		Image:     "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		Image:     basePath + "/debian.raw",
 		Boot:      true,
 		Ephemeral: true,
 	}
 	must.NoError(t, task.EncodeConcreteDriverConfig(&taskCfg))
 
-	d := driverHarness(t)
+	d := testutils.DriverHarness(t)
 	cleanup := d.MkAllocDir(task, false)
 	defer cleanup()
 
@@ -145,6 +148,7 @@ func TestDriver_Start_nonetwork(t *testing.T) {
 
 func TestDriver_Start_network(t *testing.T) {
 	ci.Parallel(t)
+	basePath := testutils.GetProjectPath("./")
 
 	task := &drivers.TaskConfig{
 		ID:      "nsdriver-integrationtest-2",
@@ -152,7 +156,7 @@ func TestDriver_Start_network(t *testing.T) {
 		AllocID: uuid.Generate(),
 	}
 	taskCfg := nspawndriver.TaskConfig{
-		Image:          "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		Image:          basePath + "/debian.raw",
 		Boot:           true,
 		Ephemeral:      true,
 		NetworkPrivate: false,
@@ -162,7 +166,7 @@ func TestDriver_Start_network(t *testing.T) {
 	}
 	must.NoError(t, task.EncodeConcreteDriverConfig(&taskCfg))
 
-	d := driverHarness(t)
+	d := testutils.DriverHarness(t)
 	cleanup := d.MkAllocDir(task, false)
 	defer cleanup()
 
@@ -183,6 +187,7 @@ func TestDriver_Start_network(t *testing.T) {
 }
 func TestDriver_Stop(t *testing.T) {
 	ci.Parallel(t)
+	basePath := testutils.GetProjectPath("./")
 
 	task := &drivers.TaskConfig{
 		ID:      uuid.Generate(),
@@ -190,7 +195,7 @@ func TestDriver_Stop(t *testing.T) {
 		AllocID: uuid.Generate(),
 	}
 	taskCfg := nspawndriver.TaskConfig{
-		Image:            "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		Image:            basePath + "/debian.raw",
 		Boot:             true,
 		Ephemeral:        true,
 		NetworkPrivate:   false,
@@ -199,7 +204,7 @@ func TestDriver_Stop(t *testing.T) {
 	}
 	must.NoError(t, task.EncodeConcreteDriverConfig(&taskCfg))
 
-	d := driverHarness(t)
+	d := testutils.DriverHarness(t)
 	cleanup := d.MkAllocDir(task, false)
 	defer cleanup()
 

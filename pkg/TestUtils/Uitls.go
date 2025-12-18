@@ -1,6 +1,8 @@
-package nspawndriver_test
+package testutils
 
 import (
+	"io/fs"
+	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
@@ -14,7 +16,7 @@ import (
 
 // podmanDriverHarness wires up everything needed to launch a task with a podman driver.
 // A driver plugin interface and cleanup function is returned
-func driverHarness(t *testing.T) *dtestutil.DriverHarness {
+func DriverHarness(t *testing.T) *dtestutil.DriverHarness {
 	logger := testlog.HCLogger(t)
 	if testing.Verbose() {
 		logger.SetLevel(hclog.Trace)
@@ -53,4 +55,40 @@ func getDriver(t *testing.T, harness *dtestutil.DriverHarness) *nspawndriver.NSp
 	driver, ok := harness.Impl().(*nspawndriver.NSpawnDriverPlugin)
 	must.True(t, ok)
 	return driver
+}
+
+func GetProjectPath(basePath string) (projectPath string) {
+
+	basePath, _ = filepath.Abs(basePath)
+
+	for range 5 {
+		filepath.Walk(basePath, func(basePath string, info fs.FileInfo, err error) error {
+
+			if projectPath != "" {
+				return nil
+			}
+
+			// dir
+			if info.IsDir() {
+				return nil
+			}
+
+			// file
+			if filepath.Base(basePath) == "go.mod" {
+				projectPath = basePath
+				return nil
+			}
+			return nil
+		})
+
+		if projectPath == "" {
+			basePath, _ = filepath.Abs(basePath + "/..")
+		}
+	}
+
+	if projectPath != "" {
+		projectPath = filepath.Dir(projectPath)
+	}
+
+	return
 }

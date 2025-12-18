@@ -35,19 +35,19 @@ job "nspawn-example" {
         name = "avnav"
         port = "http"
 
-        #check {
-        #  address_mode = "alloc"
-        #  type     = "tcp"
-        #  port     = "http"
-        #  interval = "10s"
-        #  timeout  = "2s"
-        #}
+        check {
+          address_mode = "driver"
+          type     = "tcp"
+          port     = "http"
+          interval = "10s"
+          timeout  = "2s"
+        }
       }
 
   
       config {
         name                            = "development-nspawn"
-        image                           = "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw"
+        image                           = "$IMAGE"
         boot                            = true
         ephemeral                       = true
         network_bridge                  = "avnet"
@@ -55,8 +55,8 @@ job "nspawn-example" {
       }
 
       resources {
-        cores  = 4
-        memory = 4000
+        cores  = 1
+        memory = 300
       }
     }
   }

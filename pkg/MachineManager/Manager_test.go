@@ -9,9 +9,11 @@ import (
 	"github.com/stackshadow/nspawn2/pkg/MachineManager/domain"
 	"github.com/stackshadow/nspawn2/pkg/MachineManager/service"
 	networking "github.com/stackshadow/nspawn2/pkg/Networking"
+	testutils "github.com/stackshadow/nspawn2/pkg/TestUtils"
 )
 
 func TestStart(t *testing.T) {
+	basePath := testutils.GetProjectPath("./")
 
 	manager := machinemanager.NewService(service.NewServiceOpts{
 		Repo: machinemanager.NewMachineCommandsCliBased(machinemanager.NewOpts{
@@ -28,7 +30,7 @@ func TestStart(t *testing.T) {
 
 	_, _, err := manager.MachineStart(domain.StartOpts{
 		MachineName:   "no-network",
-		ImageFileName: "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		ImageFileName: basePath + "/debian.raw",
 		IsSystemd:     true,
 		Ephemeral:     true,
 	})
@@ -38,7 +40,7 @@ func TestStart(t *testing.T) {
 
 	_, _, err = manager.MachineStart(domain.StartOpts{
 		MachineName:   "should-not-be-there",
-		ImageFileName: "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		ImageFileName: basePath + "/debian.raw",
 		IsSystemd:     true,
 		Ephemeral:     true,
 		Networking: domain.StartNeworkingOpts{
@@ -49,7 +51,7 @@ func TestStart(t *testing.T) {
 
 	ipv4, _, err := manager.MachineStart(domain.StartOpts{
 		MachineName:   "vethernet",
-		ImageFileName: "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		ImageFileName: basePath + "/debian.raw",
 		IsSystemd:     true,
 		Ephemeral:     true,
 		Networking: domain.StartNeworkingOpts{
