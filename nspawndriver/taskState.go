@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/nomad/plugins/drivers"
+	"github.com/stackshadow/nspawn2/pkg/Stats/service"
 )
 
 // taskState should store all relevant runtime information
@@ -23,7 +24,7 @@ type taskState struct {
 	procState  drivers.TaskState
 
 	machineName string // the name of the systemd-machine
-	// cmder       *Commander
+	statService *service.Service
 
 	// state
 	startedAt   time.Time

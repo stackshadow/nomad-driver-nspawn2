@@ -27,6 +27,16 @@ func TestStart(t *testing.T) {
 	})
 
 	_, _, err := manager.MachineStart(domain.StartOpts{
+		MachineName:   "no-network",
+		ImageFileName: "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
+		IsSystemd:     true,
+		Ephemeral:     true,
+	})
+	must.NoError(t, err)
+	err = manager.Stop("no-network")
+	must.NoError(t, err)
+
+	_, _, err = manager.MachineStart(domain.StartOpts{
 		MachineName:   "should-not-be-there",
 		ImageFileName: "/mnt/synced/develop/nomad/nspawn-reduced/debian.raw",
 		IsSystemd:     true,

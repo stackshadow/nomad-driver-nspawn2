@@ -16,8 +16,11 @@ import (
 	"github.com/hashicorp/nomad/plugins/drivers"
 	"github.com/hashicorp/nomad/plugins/shared/hclspec"
 	"github.com/hashicorp/nomad/plugins/shared/structs"
-	"github.com/stackshadow/nspawn2/pkg/MachineManager/domain"
-	"github.com/stackshadow/nspawn2/pkg/MachineManager/service"
+	machineManagerDomain "github.com/stackshadow/nspawn2/pkg/MachineManager/domain"
+	machineManager "github.com/stackshadow/nspawn2/pkg/MachineManager/service"
+	nspawnStats "github.com/stackshadow/nspawn2/pkg/Stats"
+	statDomain "github.com/stackshadow/nspawn2/pkg/Stats/domain"
+	"github.com/stackshadow/nspawn2/pkg/Stats/service"
 )
 
 const (
@@ -80,7 +83,7 @@ type NSpawnDriverPlugin struct {
 	nomadConfig *base.ClientDriverConfig
 
 	// the manager who takes care about systemd-machines
-	manager *service.Service
+	manager *machineManager.Service
 
 	// tasks is the in memory datastore mapping taskIDs to driver handles
 	tasks *taskStates
@@ -166,7 +169,7 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		machineName: driverConfig.MachineName,
 	}
 
-	ipv4, ipv6, err := d.manager.MachineStart(domain.StartOpts{
+	ipv4, ipv6, err := d.manager.MachineStart(machineManagerDomain.StartOpts{
 		MachineName: driverConfig.MachineName,
 		Hostname:    driverConfig.Hostname,
 
@@ -179,7 +182,7 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		Bind:         driverConfig.Bind,
 		BindReadOnly: driverConfig.BindReadOnly,
 
-		Networking: domain.StartNeworkingOpts{
+		Networking: machineManagerDomain.StartNeworkingOpts{
 			Veth:       driverConfig.NetworkVeth,
 			VethName:   driverConfig.NetworkVethExtra,
 			BridgeName: driverConfig.NetworkBridge,
@@ -301,13 +304,13 @@ func (d *NSpawnDriverPlugin) handleWait(ctx context.Context, handle *taskState, 
 					Err:      err,
 				}
 			}
-			if state == domain.MachineStateNotExist {
+			if state == machineManagerDomain.MachineStateNotExist {
 				ch <- &drivers.ExitResult{
 					ExitCode: 0,
 					Err:      nil,
 				}
 			}
-			if state == domain.MachineStateStopped {
+			if state == machineManagerDomain.MachineStateStopped {
 				ch <- &drivers.ExitResult{
 					ExitCode: 0,
 					Err:      nil,
@@ -324,12 +327,16 @@ func (d *NSpawnDriverPlugin) StopTask(taskID string, timeout time.Duration, sign
 		return drivers.ErrTaskNotFound
 	}
 
-	d.logger.Info("try to stop machine", "machine_name", handle.machineName)
+	if handle.statService != nil {
+		d.logger.Info("stoptask - stop metrics", "machine_name", handle.machineName)
+		handle.statService.Destroy()
+		handle.statService = nil
+	}
 
+	d.logger.Info("stoptask - request", "machine_name", handle.machineName)
 	d.manager.Stop(handle.machineName)
 
-	d.logger.Info("stop request, check stopped", "machine_name", handle.machineName)
-
+	d.logger.Info("stoptask - wait for stopping", "machine_name", handle.machineName)
 	err := d.manager.WaitForStopping(handle.machineName)
 	if err != nil {
 		d.logger.Error("stop task", err)
@@ -337,7 +344,7 @@ func (d *NSpawnDriverPlugin) StopTask(taskID string, timeout time.Duration, sign
 		return err
 	}
 
-	d.logger.Info("stopped", "machine_name", handle.machineName)
+	d.logger.Info("stoptask - stopped", "machine_name", handle.machineName)
 
 	return nil
 }
@@ -361,6 +368,8 @@ func (d *NSpawnDriverPlugin) InspectTask(taskID string) (*drivers.TaskStatus, er
 		return nil, drivers.ErrTaskNotFound
 	}
 
+	d.logger.Debug("Inspect task...")
+
 	return handle.TaskStatus(), nil
 }
 
@@ -372,7 +381,32 @@ func (d *NSpawnDriverPlugin) TaskStats(ctx context.Context, taskID string, inter
 	}
 	_ = handle
 
-	resourceUsage := make(<-chan *drivers.TaskResourceUsage)
+	resourceUsage := make(chan *drivers.TaskResourceUsage)
+	if handle.statService == nil {
+		d.logger.Debug("stat-service - start with interval", "interval", interval.String())
+		handle.statService = nspawnStats.NewService(
+			service.SetMachineName(handle.machineName),
+			service.SetRefreshTime(interval),
+		)
+		go handle.statService.Watch(func(stat statDomain.Stat) {
+			resourceUsage <- &drivers.TaskResourceUsage{
+				ResourceUsage: &drivers.ResourceUsage{
+					MemoryStats: &drivers.MemoryStats{
+						// RSS: stat.Memory.,
+						Usage: stat.RamUsaged,
+					},
+					CpuStats: &drivers.CpuStats{
+						TotalTicks: stat.CPUTicks,
+						Percent:    stat.CPUUsagePercent,
+					},
+				},
+				Timestamp: time.Now().UnixNano(),
+			}
+		})
+	} else {
+		d.logger.Debug("stat-service - already running", "interval", interval.String())
+
+	}
 
 	return resourceUsage, nil
 }
