@@ -1,9 +1,11 @@
 package clibased_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/shoenig/test/must"
 	"github.com/stackshadow/nspawn2/pkg/MachineManager/adapter/clibased"
 	"github.com/stackshadow/nspawn2/pkg/MachineManager/domain"
@@ -112,6 +114,56 @@ func TestStateNotExistingMachine(t *testing.T) {
 	state, err := adapter.State("notexist")
 	must.NoError(t, err)
 	must.Eq(t, domain.MachineStateNotExist, state)
+}
+
+func TestExec(t *testing.T) {
+	var err error
+	basePath := testutils.GetProjectPath("./")
+
+	adapter := clibased.New(struct {
+		BinNSPawnPath     string
+		BinMachinectlPath string
+		UseSudo           bool
+	}{
+		BinNSPawnPath:     "/run/current-system/systemd/bin/systemd-nspawn",
+		BinMachinectlPath: "/run/current-system/systemd/bin/machinectl",
+		UseSudo:           true,
+	})
+
+	startOpts := domain.StartOpts{
+		MachineName:   "integrationtest-1",
+		ImageFileName: basePath + "/debian.raw",
+		IsSystemd:     true,
+		Ephemeral:     true,
+	}
+	err = adapter.Start(startOpts)
+	must.NoError(t, err)
+
+	for {
+		state, _ := adapter.State(startOpts.MachineName)
+		if state == domain.MachineStateRunning {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	machines, err := adapter.List()
+	must.NoError(t, err)
+	must.Greater(t, 0, len(machines))
+
+	randomContent := uuid.Must(uuid.NewV7()).String()
+	randomFileName := "/tmp/" + randomContent
+	err = adapter.Exec(startOpts.MachineName, "/bin/bash", "-c", fmt.Sprintf("echo '%s' > %s", randomContent, randomFileName))
+	must.NoError(t, err)
+
+	err = adapter.Download(startOpts.MachineName, randomFileName, randomFileName)
+	must.NoError(t, err)
+
+	must.FileContains(t, randomFileName, randomContent)
+
+	err = adapter.Stop(startOpts.MachineName)
+	must.NoError(t, err)
+
 }
 
 // func TestStop(t *testing.T) {

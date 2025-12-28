@@ -203,6 +203,12 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		return
 	}
 
+	// Execute commands
+	err = d.manager.Exec(driverConfig.MachineName, driverConfig.Commands...)
+	if err != nil {
+		return
+	}
+
 	if ipv6 != "" || ipv4 != "" {
 		retDriverNetwork = &drivers.DriverNetwork{}
 		if ipv4 != "" {

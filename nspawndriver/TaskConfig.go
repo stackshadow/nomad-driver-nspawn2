@@ -32,6 +32,8 @@ var (
 		"bind":           hclspec.NewAttr("bind", "list(map(string))", false),
 		"bind_read_only": hclspec.NewAttr("bind_read_only", "list(map(string))", false),
 
+		"commands": hclspec.NewAttr("commands", "list(string)", false),
+
 		"network_private":    hclspec.NewAttr("network_private", "bool", false),
 		"network_veth":       hclspec.NewAttr("network_veth", "bool", false),
 		"network_veth_extra": hclspec.NewAttr("network_veth_extra", "string", false),
@@ -55,6 +57,8 @@ type TaskConfig struct {
 
 	Bind         hclutils.MapStrStr `codec:"bind"`
 	BindReadOnly hclutils.MapStrStr `codec:"bind_read_only"`
+
+	Commands []string `codec:"commands"`
 
 	// Networking
 	NetworkPrivate bool `codec:"network_private"`
