@@ -100,6 +100,7 @@ func (d *NSpawnDriverPlugin) buildFingerprint() *drivers.Fingerprint {
 		re := regexp.MustCompile("[0-9]{3}")
 		version := re.FindString(string(out))
 
+		fp.Attributes["driver.nspawn2.version"] = structs.NewStringAttribute(pluginVersion)
 		fp.Attributes["driver.nspawn2.systemd_version"] = structs.NewStringAttribute(version)
 	}
 
