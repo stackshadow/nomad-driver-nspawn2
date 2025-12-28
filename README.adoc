@@ -32,7 +32,7 @@ With plain go and make installed: `make build`
 
 Copy the binary in output to your plugin-dir.
 
-=== Root
+==== Root
 
 Enable the driver in your agent-config like this:
 
@@ -42,7 +42,7 @@ include::./example/agent-root.hcl[]
 ----
 
 
-=== Non-Root - Sudoers
+==== Non-Root - Sudoers
 
 To support non-root in nomad this driver use sudo.
 
@@ -73,3 +73,6 @@ IMPORTANT: The paths in the driver-config MUST match the ones in sudoers.
 include::./example/agent-sudo.hcl[]
 ----
 
+=== On NixOS
+
+include::./nixos/usage.adoc[]

@@ -1,0 +1,27 @@
+You can use this in nixos like this.
+
+First import this package:
+
+[source,nix]
+----
+  nspawn2-src = pkgs.fetchgit {
+    url = "https://codeberg.org/stackshadow/nspawn2";
+    rev = "26633a9126449ef6afb1978139764ec5aea8e4b5";
+    hash = "sha256-QXi7fYI7EI2D8G1p5vIMcFVpRskxHt7mtghdaBhTZcE=";
+  };
+
+  nomad-plugin-nspawn2 = pkgs.callPackage "${nspawn2-src}/nixos/package.nix" { };
+----
+
+And then add it to your nomad-config:
+
+[source,nix]
+----
+services.nomad = {
+enable = true;
+extraPackages = with pkgs; [ util-linux systemd iproute2 ];
+extraSettingsPlugins = [
+    nomad-plugin-nspawn2
+];
+...
+----
