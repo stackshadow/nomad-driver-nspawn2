@@ -52,6 +52,47 @@ func TestStartStop(t *testing.T) {
 
 }
 
+func TestStartStopReadOnly(t *testing.T) {
+	var err error
+	basePath := testutils.GetProjectPath("./")
+
+	adapter := clibased.New(struct {
+		BinNSPawnPath     string
+		BinMachinectlPath string
+		UseSudo           bool
+	}{
+		BinNSPawnPath:     "/run/current-system/systemd/bin/systemd-nspawn",
+		BinMachinectlPath: "/run/current-system/systemd/bin/machinectl",
+		UseSudo:           true,
+	})
+
+	startOpts := domain.StartOpts{
+		MachineName:   "integrationtest-1",
+		ImageFileName: basePath + "/debian.raw",
+		IsSystemd:     true,
+		Ephemeral:     true,
+		ReadOnly:      true,
+	}
+	err = adapter.Start(startOpts)
+	must.NoError(t, err)
+
+	for {
+		state, _ := adapter.State(startOpts.MachineName)
+		if state == domain.MachineStateRunning {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	machines, err := adapter.List()
+	must.NoError(t, err)
+	must.Greater(t, 0, len(machines))
+
+	err = adapter.Stop(startOpts.MachineName)
+	must.NoError(t, err)
+
+}
+
 func TestStart(t *testing.T) {
 	basePath := testutils.GetProjectPath("./")
 

@@ -22,6 +22,7 @@ var (
 			hclspec.NewLiteral("true"),
 		),
 		"ephemeral": hclspec.NewAttr("ephemeral", "bool", false),
+		"read_only": hclspec.NewAttr("read_only", "bool", false),
 
 		"image": hclspec.NewAttr("image", "string", true),
 
@@ -49,6 +50,7 @@ type TaskConfig struct {
 
 	Boot      bool   `codec:"boot"`
 	Ephemeral bool   `codec:"ephemeral"`
+	ReadOnly  bool   `codec:"read_only"`
 	Image     string `codec:"image"`
 
 	ResolvConf string `codec:"resolv_conf"`

@@ -18,6 +18,7 @@ type StartOpts struct {
 	ImageFileName string
 	IsSystemd     bool // start systemd in container
 	Ephemeral     bool // persistance disabled
+	ReadOnly      bool // Mount the root directory read-only
 
 	CopyResolvConf bool
 

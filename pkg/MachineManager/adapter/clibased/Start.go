@@ -27,6 +27,9 @@ func convertOptsToParameter(opts domain.StartOpts) (args []string, err error) {
 	if opts.Ephemeral {
 		args = append(args, "--ephemeral")
 	}
+	if opts.ReadOnly {
+		args = append(args, "--read-only")
+	}
 
 	if opts.CopyResolvConf {
 		args = append(args, "--resolv-conf", "copy")
