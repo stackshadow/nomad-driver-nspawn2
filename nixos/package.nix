@@ -2,17 +2,18 @@
 { lib
 , buildGo124Module
 , fetchgit
-,
+, version ? "0.6.2"
+, hash ? ""
 }:
 
 buildGo124Module rec {
   pname = "nomad-driver-nspawn2";
-  version = "0.6.0";
+  version = "${version}";
 
   src = fetchgit {
     url = "https://codeberg.org/stackshadow/nspawn2";
-    rev = "refs/tags/v0.6.0";
-    hash = "sha256-tendLX3qYRpCecKn//lsINk89zC1brYk8ElRo+/Yobc=";
+    rev = "refs/tags/v${version}";
+    hash = hash;
   };
 
   # src = /mnt/synced/develop/nomad/nspawn-reduced;
