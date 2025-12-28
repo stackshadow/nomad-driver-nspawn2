@@ -2,17 +2,17 @@
 { lib
 , buildGo124Module
 , fetchgit
-, version ? "0.6.2"
+, tag ? "0.6.2"
 , hash ? ""
 }:
 
 buildGo124Module rec {
   pname = "nomad-driver-nspawn2";
-  version = "${version}";
+  version = "${tag}";
 
   src = fetchgit {
     url = "https://codeberg.org/stackshadow/nspawn2";
-    rev = "refs/tags/v${version}";
+    rev = "refs/tags/v${tag}";
     hash = hash;
   };
 
@@ -28,7 +28,7 @@ buildGo124Module rec {
   # BUILDARGS := build -mod=vendor -a -v -ldflags '-extldflags "-static" -X github.com/JanMa/nomad-driver-nspawn/nspawn.pluginVersion=${VERSION}' -o $(BINARY)
 
   ldflags = [
-    "-X github.com/stackshadow/nspawn2/nspawndriver.pluginVersion=${version}"
+    "-X github.com/stackshadow/nspawn2/nspawndriver.pluginVersion=${tag}"
   ];
 
   meta = with lib; {
