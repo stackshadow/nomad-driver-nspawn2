@@ -32,7 +32,7 @@ const (
 
 	// pluginVersion allows the client to identify and use newer versions of
 	// an installed plugin
-	pluginVersion = "v0.6.0"
+	pluginVersion = "v0.6.1"
 
 	// fingerprintPeriod is the interval at which the plugin will send
 	// fingerprint responses
@@ -184,6 +184,7 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		ImageFileName: driverConfig.Image,
 		IsSystemd:     driverConfig.Boot,
 		Ephemeral:     driverConfig.Ephemeral,
+		ReadOnly:      driverConfig.ReadOnly,
 
 		Environment: driverConfig.Environment,
 
