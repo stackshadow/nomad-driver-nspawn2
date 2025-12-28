@@ -20,10 +20,10 @@
         "make build"
       ],
       "nomad": [
-        "nomad agent -dev -config=./example/agent.hcl -plugin-dir=$(pwd)/output"
+        "nomad agent -dev -config=./example/agent-sudo.hcl -plugin-dir=$(pwd)/output"
       ],
       "nomad-root": [
-        "nomad agent -dev -config=./example/agent.hcl -plugin-dir=$(pwd)/output"
+        "sudo nomad agent -dev -config=./example/agent-root.hcl -plugin-dir=$(pwd)/output"
       ]
     }
   }
