@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/nomad/drivers/shared/eventer"
+	"github.com/hashicorp/nomad/helper/pluginutils/hclutils"
 	"github.com/hashicorp/nomad/helper/uuid"
 	"github.com/hashicorp/nomad/plugins/base"
 	"github.com/hashicorp/nomad/plugins/drivers"
@@ -154,9 +155,16 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		driverConfig.MachineName = uuid.Generate()
 	}
 
+	// add allocdir as bind-only
+	if driverConfig.BindReadOnly == nil {
+		driverConfig.BindReadOnly = make(hclutils.MapStrStr)
+	}
+	driverConfig.BindReadOnly[cfg.AllocDir+"/"+cfg.Name] = "/run/task"
+
 	// d.logger.Info("info task", "driverConfig", hclog.Fmt("%+v", driverConfig))
 	d.logger.Info("info task", "mounts", hclog.Fmt("%+v", cfg.Mounts))
 	// d.logger.Info("info task", "env", hclog.Fmt("%+v", cfg.Env))
+	// d.logger.Info("info task", "allocdir", hclog.Fmt("%+v", cfg.AllocDir))
 
 	retTaskHandle = drivers.NewTaskHandle(taskHandleVersion)
 	retTaskHandle.Config = cfg
