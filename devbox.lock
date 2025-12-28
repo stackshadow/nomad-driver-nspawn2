@@ -1,0 +1,65 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "debootstrap@1.0.140": {
+      "last_modified": "2025-11-23T21:50:36Z",
+      "resolved": "github:NixOS/nixpkgs/ee09932cedcef15aaf476f9343d1dea2cb77e261#debootstrap",
+      "source": "devbox-search",
+      "version": "1.0.140_bpo12+1",
+      "systems": {
+        "aarch64-linux": {
+          "store_path": "/nix/store/2krax7m4rmh8ic61fzvwh7dl0ljxl2yv-debootstrap-1.0.140_bpo12+1"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/fd5kz3zbph3bmp420r3cgkl69nyyy0qy-debootstrap-1.0.140_bpo12+1"
+        }
+      }
+    },
+    "gnumake@4.4.1": {
+      "last_modified": "2025-12-02T02:29:13Z",
+      "resolved": "github:NixOS/nixpkgs/f720de59066162ee879adcc8c79e15c51fe6bfb4#gnumake",
+      "source": "devbox-search",
+      "version": "4.4.1",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/himpsafkr92afwx35m02cfqqkayjp7ab-gnumake-4.4.1"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/4as5z9sq13frzn76l4grs0x7jlhmp8a4-gnumake-4.4.1"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/bc7w3vj6r09bi1izjnag31zw1s26bl3i-gnumake-4.4.1"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/jlv0a6iyh8vb7pfyhjj93xy245xlmgh5-gnumake-4.4.1"
+        }
+      }
+    },
+    "go@1.24.4": {
+      "last_modified": "2025-07-13T22:45:35Z",
+      "resolved": "github:NixOS/nixpkgs/a421ac6595024edcfbb1ef950a3712b89161c359#go",
+      "source": "devbox-search",
+      "version": "1.24.4",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/f4a0g1p943l61wfvqnpdr73v9bsyfhf2-go-1.24.4"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/mdyik6amglpjs533vk927f9w1qmyw239-go-1.24.4"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/b56ngr9p7x6z368w8m7ps95r3x8gdfv7-go-1.24.4"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/xrzqlk92h7z5mz9mlc4a9dyy91n5b68i-go-1.24.4"
+        }
+      }
+    },
+    "nomad@1.10.2": {
+      "last_modified": "2025-07-13T22:45:35Z",
+      "resolved": "github:NixOS/nixpkgs/a421ac6595024edcfbb1ef950a3712b89161c359#nomad",
+      "source": "devbox-search",
+      "version": "1.10.2"
+    }
+  }
+}

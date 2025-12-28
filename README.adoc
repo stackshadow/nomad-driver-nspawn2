@@ -1,14 +1,75 @@
 = systemd-nspawn nomad driver
 
-This dirver is inspired by the community-driver nspawn, but its not ready yet !
+This dirver is inspired by the community-driver nspawn, which not work so nice on my nixos-system.
 
-== Why this exist
+CAUTION: This driver is developed on codeberg on https://codeberg.org/stackshadow/nspawn2. So please dont open requests on Shi*Hub.
 
-- it works on my nixos-system
-- dbus not neccessary, it just use cli-tools
-- support for sudo, easyer for me to develop locally ( not running my ide as root... )
-- to learn nomad driver development :)
+== Info
+
+=== What it does
+
+- not replace the nspawn-commmunity-driver !
+- not support downloading images
+
+- ✅ it works on nixos-system
+- ✅ no DBUS, it just use cli-tools
+- 🔒 support for sudo, easyer for me to develop locally ( not running my ide as root... )
+- ✅ run commands after bootup the vm
+- 🪐 networking
 
 == Tested systems
 
 systemd 258
+
+== Installation
+
+
+=== Manual
+
+With devbox: `devbox run build`
+
+With plain go and make installed: `make build`
+
+Copy the binary in output to your plugin-dir.
+
+=== Root
+
+Enable the driver in your agent-config like this:
+
+[source]
+----
+include::./example/agent-root.hcl[]
+----
+
+
+=== Non-Root - Sudoers
+
+To support non-root in nomad this driver use sudo.
+
+You need to add some stuff in your sudoers file to make that driver work as non root
+
+[source]
+----
+nomad  ALL=(ALL:ALL)    NOPASSWD: /bin/systemd-nspawn
+nomad  ALL=(ALL:ALL)    NOPASSWD: /bin/machinectl
+nomad  ALL=(ALL:ALL)    NOPASSWD: /bin/ip
+----
+
+On Nixos it looks likl this:
+
+[source]
+----
+nomad  ALL=(ALL:ALL)    NOPASSWD: /run/current-system/systemd/bin/systemd-nspawn
+nomad  ALL=(ALL:ALL)    NOPASSWD: /run/current-system/systemd/bin/machinectl
+nomad  ALL=(ALL:ALL)    NOPASSWD: /nix/store/49av73h3l9rabx0jrac5hcsf1h3x5y6s-iproute2-6.17.0/bin/ip
+----
+
+You need also to config the plugin to provide the correct paths.
+
+IMPORTANT: The paths in the driver-config MUST match the ones in sudoers.
+
+[source]
+----
+include::./example/agent-sudo.hcl[]
+----
+

@@ -1,0 +1,30 @@
+{
+  "packages": [
+    "go@1.24.4",
+    "debootstrap@1.0.140",
+    "gnumake@4.4.1",
+    "nomad@1.10.2"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo 'Welcome to devbox!' > /dev/null"
+    ],
+    "scripts": {
+      "test-prepare": [
+        "bash tests/createImage.bash"
+      ],
+      "test": [
+        "make test"
+      ],
+      "build": [
+        "make build"
+      ],
+      "nomad": [
+        "nomad agent -dev -config=./example/agent-sudo.hcl -plugin-dir=$(pwd)/output"
+      ],
+      "nomad-root": [
+        "sudo nomad agent -dev -config=./example/agent-root.hcl -plugin-dir=$(pwd)/output"
+      ]
+    }
+  }
+}

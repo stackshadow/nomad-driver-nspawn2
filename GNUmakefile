@@ -1,4 +1,4 @@
-PLUGIN_BINARY=hello-driver
+PLUGIN_BINARY=nspawn2
 export GO111MODULE=on
 
 default: build
@@ -8,4 +8,7 @@ clean: ## Remove build artifacts
 	rm -rf ${PLUGIN_BINARY}
 
 build:
-	go build -o ${PLUGIN_BINARY} .
+	go build -o ./output/${PLUGIN_BINARY} .
+
+test:
+	go test -cover ./...
