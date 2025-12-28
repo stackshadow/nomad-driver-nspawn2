@@ -19,6 +19,9 @@
       "build": [
         "make build"
       ],
+      "build-nix": [
+        "nix build .#nspawn2"
+      ],
       "nomad": [
         "nomad agent -dev -config=./example/agent-sudo.hcl -plugin-dir=$(pwd)/output"
       ],
