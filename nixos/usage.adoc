@@ -6,8 +6,8 @@ First import this package:
 ----
   nspawn2-src = pkgs.fetchgit {
     url = "https://codeberg.org/stackshadow/nspawn2";
-    rev = "26633a9126449ef6afb1978139764ec5aea8e4b5";
-    hash = "sha256-QXi7fYI7EI2D8G1p5vIMcFVpRskxHt7mtghdaBhTZcE=";
+    rev = "b2aaad6db1eacb7cf9cb07ab58d0da4118b30e12";
+    hash = "sha256-tendLX3qYRpCecKn//lsINk89zC1brYk8ElRo+/Yobc=";
   };
 
   nomad-plugin-nspawn2 = pkgs.callPackage "${nspawn2-src}/nixos/package.nix" { };

@@ -7,12 +7,12 @@
 
 buildGo124Module rec {
   pname = "nomad-driver-nspawn2";
-  version = "0.5.0";
+  version = "0.6.0";
 
   src = fetchgit {
     url = "https://codeberg.org/stackshadow/nspawn2";
-    rev = "refs/tags/v0.5.0";
-    hash = "sha256-0kmRbc1i4w82b4S4r2dOKyzna7E/sWU5y8cuQGPY2dM";
+    rev = "refs/tags/v0.6.0";
+    hash = "sha256-tendLX3qYRpCecKn//lsINk89zC1brYk8ElRo+/Yobc=";
   };
 
   # src = /mnt/synced/develop/nomad/nspawn-reduced;
