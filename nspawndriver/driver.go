@@ -32,7 +32,7 @@ const (
 
 	// pluginVersion allows the client to identify and use newer versions of
 	// an installed plugin
-	pluginVersion = "v0.6.2"
+	pluginVersion = "v0.7.0"
 
 	// fingerprintPeriod is the interval at which the plugin will send
 	// fingerprint responses
@@ -161,8 +161,25 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 	}
 	driverConfig.BindReadOnly[cfg.AllocDir+"/"+cfg.Name] = "/run/task"
 
+	// map mounts to config
+	for _, mount := range cfg.Mounts {
+		if mount.Readonly {
+			if driverConfig.BindReadOnly == nil {
+				driverConfig.BindReadOnly = make(hclutils.MapStrStr)
+			}
+			driverConfig.BindReadOnly[mount.HostPath] = mount.TaskPath
+		} else {
+			if driverConfig.Bind == nil {
+				driverConfig.Bind = make(hclutils.MapStrStr)
+			}
+			driverConfig.Bind[mount.HostPath] = mount.TaskPath
+		}
+	}
+
 	// d.logger.Info("info task", "driverConfig", hclog.Fmt("%+v", driverConfig))
-	d.logger.Info("info task", "mounts", hclog.Fmt("%+v", cfg.Mounts))
+	// for _, mount := range cfg.Mounts {
+	// 	d.logger.Info("info task", "mounts", hclog.Fmt("%+v", mount))
+	// }
 	// d.logger.Info("info task", "env", hclog.Fmt("%+v", cfg.Env))
 	// d.logger.Info("info task", "allocdir", hclog.Fmt("%+v", cfg.AllocDir))
 
