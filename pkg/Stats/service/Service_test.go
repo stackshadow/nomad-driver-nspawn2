@@ -22,10 +22,9 @@ func TestService(t *testing.T) {
 		AllocID: uuid.Generate(),
 	}
 	taskCfg := nspawndriver.TaskConfig{
-		MachineName: "test",
-		Image:       basePath + "/debian.raw",
-		Boot:        true,
-		Ephemeral:   true,
+		Image:     basePath + "/debian.raw",
+		Boot:      true,
+		Ephemeral: true,
 	}
 	must.NoError(t, task.EncodeConcreteDriverConfig(&taskCfg))
 

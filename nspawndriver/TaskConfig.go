@@ -14,7 +14,6 @@ var (
 	// this is used to validated the configuration specified for the plugin
 	// when a job is submitted.
 	TaskConfigSpec = hclspec.NewObject(map[string]*hclspec.Spec{
-		"name":     hclspec.NewAttr("name", "string", false),
 		"hostname": hclspec.NewAttr("hostname", "string", false),
 
 		"boot": hclspec.NewDefault(
@@ -43,8 +42,7 @@ var (
 // TaskConfig contains configuration information for a task that runs with
 // this plugin
 type TaskConfig struct {
-	MachineName string `codec:"name"`
-	Hostname    string `codec:"hostname"`
+	Hostname string `codec:"hostname"`
 
 	Boot      bool   `codec:"boot"`
 	Ephemeral bool   `codec:"ephemeral"`

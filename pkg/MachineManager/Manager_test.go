@@ -28,7 +28,21 @@ func TestStart(t *testing.T) {
 		Timeout: time.Second * 15,
 	})
 
+	// prepare systemd
 	_, _, err := manager.MachineStart(domain.StartOpts{
+		MachineName:   "prepare",
+		ImageFileName: basePath + "/debian.raw",
+		IsSystemd:     true,
+		Ephemeral:     false,
+	})
+	must.NoError(t, err)
+
+	manager.Exec("prepare", "/usr/bin/systemctl", "enable", "systemd-networkd")
+
+	err = manager.Stop("prepare")
+	must.NoError(t, err)
+
+	_, _, err = manager.MachineStart(domain.StartOpts{
 		MachineName:   "no-network",
 		ImageFileName: basePath + "/debian.raw",
 		IsSystemd:     true,

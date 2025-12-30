@@ -7,12 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/nomad/drivers/shared/eventer"
 	"github.com/hashicorp/nomad/helper/pluginutils/hclutils"
-	"github.com/hashicorp/nomad/helper/uuid"
 	"github.com/hashicorp/nomad/plugins/base"
 	"github.com/hashicorp/nomad/plugins/drivers"
 	"github.com/hashicorp/nomad/plugins/shared/hclspec"
@@ -148,12 +148,8 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		return
 	}
 
-	// update machine name
-	if driverConfig.MachineName != "" {
-		driverConfig.MachineName = driverConfig.MachineName + "-" + uuid.Generate()
-	} else {
-		driverConfig.MachineName = uuid.Generate()
-	}
+	// set machine name
+	machineName := strings.ReplaceAll(cfg.ID, "/", "-")
 
 	// add allocdir as bind-only
 	if driverConfig.BindReadOnly == nil {
@@ -191,11 +187,11 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 		procState:   drivers.TaskStateRunning,
 		startedAt:   time.Now().Round(time.Millisecond),
 		logger:      d.logger,
-		machineName: driverConfig.MachineName,
+		machineName: machineName,
 	}
 
 	ipv4, ipv6, err := d.manager.MachineStart(machineManagerDomain.StartOpts{
-		MachineName: driverConfig.MachineName,
+		MachineName: machineName,
 		Hostname:    driverConfig.Hostname,
 
 		ImageFileName: driverConfig.Image,
@@ -222,7 +218,7 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 	}
 
 	// Execute commands
-	err = d.manager.Exec(driverConfig.MachineName, driverConfig.Commands...)
+	err = d.manager.Exec(machineName, driverConfig.Commands...)
 	if err != nil {
 		return
 	}
@@ -240,7 +236,7 @@ func (d *NSpawnDriverPlugin) StartTask(cfg *drivers.TaskConfig) (retTaskHandle *
 
 		TaskConfig:  cfg,
 		StartedAt:   h.startedAt,
-		MachineName: driverConfig.MachineName,
+		MachineName: machineName,
 	}
 
 	err = retTaskHandle.SetDriverState(&driverState)
