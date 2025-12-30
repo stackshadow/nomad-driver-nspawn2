@@ -2,7 +2,7 @@
 { lib
 , buildGo124Module
 , fetchgit
-, tag ? "0.7.0"
+, tag ? "0.8.0"
 , hash ? ""
 , hashVendor ? "sha256-HLXHegOk33jUkrjBsBpzkHbs8/CbGqBiJomkpXsXNKc="
 , source ? fetchgit {
