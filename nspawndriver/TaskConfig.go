@@ -26,8 +26,6 @@ var (
 
 		"image": hclspec.NewAttr("image", "string", true),
 
-		"resolv_conf": hclspec.NewAttr("resolv_conf", "string", false),
-
 		"environment": hclspec.NewAttr("environment", "list(map(string))", false),
 
 		"bind":           hclspec.NewAttr("bind", "list(map(string))", false),
@@ -52,8 +50,6 @@ type TaskConfig struct {
 	Ephemeral bool   `codec:"ephemeral"`
 	ReadOnly  bool   `codec:"read_only"`
 	Image     string `codec:"image"`
-
-	ResolvConf string `codec:"resolv_conf"`
 
 	Environment hclutils.MapStrStr `codec:"environment"`
 
@@ -84,54 +80,4 @@ func (c *TaskConfig) Validate() error {
 	}
 
 	return nil
-}
-
-func (c *TaskConfig) ToCLIParameter() ([]string, error) {
-	if c.Image == "" {
-		return nil, fmt.Errorf("no image configured")
-	}
-
-	args := []string{"-i", c.Image}
-
-	if c.MachineName != "" {
-		args = append(args, "--machine", c.MachineName)
-	}
-	if c.Hostname != "" {
-		args = append(args, "--hostname", c.Hostname)
-	}
-	if c.Boot {
-		args = append(args, "--boot")
-	}
-	if c.Ephemeral {
-		args = append(args, "--ephemeral")
-	}
-
-	if c.ResolvConf != "" {
-		args = append(args, "--resolv-conf", c.ResolvConf)
-	}
-
-	for k, v := range c.Bind {
-		args = append(args, "--bind", k+":"+v)
-	}
-	for k, v := range c.BindReadOnly {
-		args = append(args, "--bind-ro", k+":"+v)
-	}
-	for k, v := range c.Environment {
-		args = append(args, "-E", k+"="+v)
-	}
-
-	if c.NetworkPrivate {
-		args = append(args, "--private-network")
-	}
-	if c.NetworkVeth {
-		args = append(args, "--network-veth")
-	}
-	if c.NetworkVethExtra != "" {
-		args = append(args, "--network-veth-extra", c.NetworkVethExtra)
-	}
-	if len(c.NetworkBridge) > 0 {
-		args = append(args, "--network-bridge", c.NetworkBridge)
-	}
-
-	return args, nil
 }
